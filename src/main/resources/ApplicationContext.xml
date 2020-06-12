@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd
+        http://www.springframework.org/schema/task
+        http://www.springframework.org/schema/task/spring-task.xsd">
+    <!-- 开启注解扫描，只处理Service，Dao层，Controller层交给SpringMVC管理 -->
+    <context:component-scan base-package="com.liudisi">
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+
+    <!-- 开启定时任务的注解扫描 -->
+    <task:annotation-driven></task:annotation-driven>
+
+    <!-- Spring整合Mybatis框架 -->
+    <!-- 引入jdbc.properties -->
+    <context:property-placeholder location="classpath:jdbc.properties" system-properties-mode="FALLBACK"></context:property-placeholder>
+    <!-- 配置数据源DriverManagerDataSource由Spring提供 -->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init">
+        <property name="driverClassName" value="${jdbc.driver}"></property>
+        <property name="url" value="${jdbc.url}"></property>
+        <property name="username" value="${jdbc.username}"></property>
+        <property name="password" value="${jdbc.password}"></property>
+        <!-- druid监控页面SQL监控生效 -->
+        <property name="filters" value="stat"></property>
+    </bean>
+
+    <!-- 配置SqlSessionFactoryBean对象 -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"></property>
+        <!-- pageHelper分页插件 -->
+        <property name="plugins">
+            <array>
+                <bean class="com.github.pagehelper.PageInterceptor"></bean>
+            </array>
+        </property>
+     <!--   &lt;!&ndash; 配置别名 &ndash;&gt;
+        <property name="typeAliasesPackage" value="com.liudisi.domain;com.liudisi.vo"></property>-->
+    </bean>
+    <!-- 扫描Dao接口 -->
+    <bean id="mapperScannerConfigurer" class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.liudisi.dao"></property>
+    </bean>
+    <!-- 配置事务管理器 -->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    <!-- 配置Spring的声明式事务 -->
+    <tx:advice id="txadvcie" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="*" read-only="false" propagation="REQUIRED"/>
+            <tx:method name="find*" read-only="true" propagation="SUPPORTS"/>
+        </tx:attributes>
+    </tx:advice>
+    <!-- 配置AOP -->
+    <aop:config>
+        <!-- 配置切入点表达式 -->
+        <aop:pointcut id="pt1" expression="execution(* com.liudisi.service.impl.*.*(..))"/>
+        <!-- 配置切入点与通知的联系 -->
+        <aop:advisor advice-ref="txadvcie" pointcut-ref="pt1"></aop:advisor>
+    </aop:config>
+</beans>
